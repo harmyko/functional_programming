@@ -21,7 +21,9 @@ data Passenger = Passenger
 data Command
   = AddVehicle Vehicle
   | FilterByPlate String
+  | AddPassenger String String Int
   | Sequence Command Command
+  | CalculateAverageAge Vehicle
   | Dump Dumpable
   deriving Show
 
@@ -56,14 +58,24 @@ vehicle2 = Vehicle
   }
 
 example0 :: Command
-example0 = Sequence
-  (AddVehicle vehicle0)
-  (AddVehicle vehicle1) 
+example0 = AddVehicle vehicle0
 
 example1 :: Command
-example1 = Sequence
-  example0
+example1 = FilterByPlate "LMN-456"
+
+example2 :: Command
+example2 = AddPassenger "ABC-123" "F" 19
+
+example3 :: Command
+example3 = CalculateAverageAge vehicle2
+
+example4 :: Command
+example4 = Sequence 
+  (Sequence 
+    (AddVehicle vehicle0)
+    (AddVehicle vehicle1)
+  )
   (AddVehicle vehicle2)
 
 examples :: [Command]
-examples = [example0, example1, Dump Examples]
+examples = [example0, example1, example2, example3, example4, Dump Examples]
