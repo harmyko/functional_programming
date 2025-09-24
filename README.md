@@ -15,21 +15,21 @@
 ### BNFs
 
 ``
-AddVehicle (Vehicle {vehiclePlate = "ABC-123", driver = Driver {driverSex = "M", driverAge = 35}, passengers = []})
+- AddVehicle (Vehicle {vehiclePlate = "ABC-123", driver = Driver {driverSex = "M", driverAge = 35}, passengers = []})
 ``
 
 ``
-FilterByPlate "LMN-456"
+- FilterByPlate "LMN-456"
 ``
 
 ``
-AddPassenger "ABC-123" "F" 19
+- AddPassenger "ABC-123" "F" 19
 ``
 
 ``
-CalculateAverageAge (Vehicle {vehiclePlate = "LMN-456", driver = Driver {driverSex = "M", driverAge = 50}, passengers = [Passenger {passengerSex = "F", passengerAge = 22}]})
+- CalculateAverageAge (Vehicle {vehiclePlate = "LMN-456", driver = Driver {driverSex = "M", driverAge = 50}, passengers = [Passenger {passengerSex = "F", passengerAge = 22}]})
 ``
 
 ``
-Sequence (Sequence (AddVehicle (Vehicle {vehiclePlate = "ABC-123", driver = Driver {driverSex = "M", driverAge = 35}, passengers = []})) (AddVehicle (Vehicle {vehiclePlate = "XYZ-789", driver = Driver {driverSex = "F", driverAge = 28}, passengers = [Passenger {passengerSex = "M", passengerAge = 40},Passenger {passengerSex = "F", passengerAge = 25}]}))) (AddVehicle (Vehicle {vehiclePlate = "LMN-456", driver = Driver {driverSex = "M", driverAge = 50}, passengers = [Passenger {passengerSex = "F", passengerAge = 22}]}))
+- Sequence (Sequence (AddVehicle (Vehicle {vehiclePlate = "ABC-123", driver = Driver {driverSex = "M", driverAge = 35}, passengers = []})) (AddVehicle (Vehicle {vehiclePlate = "XYZ-789", driver = Driver {driverSex = "F", driverAge = 28}, passengers = [Passenger {passengerSex = "M", passengerAge = 40},Passenger {passengerSex = "F", passengerAge = 25}]}))) (AddVehicle (Vehicle {vehiclePlate = "LMN-456", driver = Driver {driverSex = "M", driverAge = 50}, passengers = [Passenger {passengerSex = "F", passengerAge = 22}]}))
 ``
