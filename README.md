@@ -21,4 +21,20 @@
             | "Sequence" <command> <command>
             | "CalculateAverageAge" <vehicle>
             | "Dump" <dumpable>
+
+<vehicle> ::= "Vehicle" <plate> <driver> <passengers>
+
+<driver> ::= "Driver" <sex> <age>
+
+<passengers> ::= "[" <passengerList> "]"
+
+<passengerList> ::= <passenger> | <passenger> "," <passengerList>
+
+<passenger> ::= "Passenger" <sex> <age>
+
+<plate> ::= <string>
+<sex> ::= "M" | "F"
+<age> ::= <integer>
+
+<dumpable> ::= "Examples"
 ``
