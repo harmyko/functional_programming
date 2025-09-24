@@ -14,7 +14,7 @@
 
 ### BNF
 
-``
+```
 <command> ::= "AddVehicle" <vehicle>
             | "FilterByPlate" <plate>
             | "AddPassenger" <plate> <sex> <age>
@@ -37,4 +37,4 @@
 <age> ::= <integer>
 
 <dumpable> ::= "Examples"
-``
+```
