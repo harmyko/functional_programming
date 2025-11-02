@@ -10,19 +10,19 @@ data Vehicle = Vehicle
   } deriving Show
 
 data Driver = Driver
-  { driverSex :: String
+  { driverSex :: Char
   , driverAge :: Int
   } deriving Show
 
 data Passenger = Passenger
-  { passengerSex :: String
+  { passengerSex :: Char
   , passengerAge :: Int
   } deriving Show
 
 data Command
   = AddVehicle Vehicle
   | FilterByPlate String
-  | AddPassenger String String Int
+  | AddPassenger String Char Int
   | Sequence Command Command
   | CalculateAverageAge Vehicle
   | Dump Dumpable
@@ -35,7 +35,7 @@ data Dumpable
 vehicle0 :: Vehicle
 vehicle0 = Vehicle
   { vehiclePlate = "ABC-123"
-  , driver = Driver { driverSex = "M", driverAge = 35 }
+  , driver = Driver { driverSex = 'M', driverAge = 35 }
   , passengers =
       [ ]
   }
@@ -43,19 +43,19 @@ vehicle0 = Vehicle
 vehicle1 :: Vehicle
 vehicle1 = Vehicle
   { vehiclePlate = "XYZ-789"
-  , driver = Driver { driverSex = "F", driverAge = 28 }
+  , driver = Driver { driverSex = 'F', driverAge = 28 }
   , passengers =
-      [ Passenger { passengerSex = "M", passengerAge = 40 }
-      , Passenger { passengerSex = "F", passengerAge = 25 }
+      [ Passenger { passengerSex = 'M', passengerAge = 40 }
+      , Passenger { passengerSex = 'F', passengerAge = 25 }
       ]
   }
 
 vehicle2 :: Vehicle
 vehicle2 = Vehicle
   { vehiclePlate = "LMN-456"
-  , driver = Driver { driverSex = "M", driverAge = 50 }
+  , driver = Driver { driverSex = 'M', driverAge = 50 }
   , passengers =
-      [ Passenger { passengerSex = "F", passengerAge = 22 } ]
+      [ Passenger { passengerSex = 'F', passengerAge = 22 } ]
   }
 
 example0 :: Command
@@ -65,7 +65,7 @@ example1 :: Command
 example1 = FilterByPlate "LMN-456"
 
 example2 :: Command
-example2 = AddPassenger "ABC-123" "F" 19
+example2 = AddPassenger "ABC-123" 'F' 19
 
 example3 :: Command
 example3 = CalculateAverageAge vehicle2

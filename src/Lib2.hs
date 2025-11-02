@@ -169,10 +169,10 @@ parsePlate input
                  else Left "Expected 3 digits after '-'"
          else Left "Expected plate format ABC-123"
 
--- BNF: <sex> ::= "M" | "F"
-parseSex :: Parser String
-parseSex ('M':rest) = Right ("M", rest)
-parseSex ('F':rest) = Right ("F", rest)
+-- BNF: <sex> ::= 'M' | 'F'
+parseSex :: Parser Char
+parseSex ('M':rest) = Right ('M', rest)
+parseSex ('F':rest) = Right ('F', rest)
 parseSex _ = Left "Expected 'M' or 'F'"
 
 -- BNF: <number> ::= <digit> | <digit> <number>
@@ -248,7 +248,7 @@ instance ToCliCommand Lib1.Command where
   toCliCommand :: Lib1.Command -> String
   toCliCommand (Lib1.AddVehicle vehicle) = "add vehicle " ++ vehicleToString vehicle
   toCliCommand (Lib1.FilterByPlate plate) = "filter by plate " ++ plate
-  toCliCommand (Lib1.AddPassenger plate sex age) = "add passenger " ++ plate ++ " " ++ sex ++ " " ++ show age
+  toCliCommand (Lib1.AddPassenger plate sex age) = "add passenger " ++ plate ++ " " ++ [sex] ++ " " ++ show age
   toCliCommand (Lib1.CalculateAverageAge vehicle) = "calculate average age " ++ vehicleToString vehicle
   toCliCommand (Lib1.Sequence cmd1 cmd2) = toCliCommand cmd1 ++ "; " ++ toCliCommand cmd2
   toCliCommand (Lib1.Dump Lib1.Examples) = "dump examples"
@@ -258,7 +258,7 @@ vehicleToString (Lib1.Vehicle plate driver passengers) =
   plate ++ " " ++ driverToString driver ++ " " ++ passengersToString passengers
 
 driverToString :: Lib1.Driver -> String
-driverToString (Lib1.Driver sex age) = sex ++ " " ++ show age
+driverToString (Lib1.Driver sex age) = [sex] ++ " " ++ show age
 
 passengersToString :: [Lib1.Passenger] -> String
 passengersToString [] = "[]"
@@ -270,7 +270,7 @@ passengerListToString [p] = passengerToString p
 passengerListToString (p:ps) = passengerToString p ++ ", " ++ passengerListToString ps
 
 passengerToString :: Lib1.Passenger -> String
-passengerToString (Lib1.Passenger sex age) = sex ++ " " ++ show age
+passengerToString (Lib1.Passenger sex age) = [sex] ++ " " ++ show age
 
 -- Eq instance for Command
 instance Eq Lib1.Command where
