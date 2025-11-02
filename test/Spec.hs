@@ -9,7 +9,7 @@ main :: IO ()
 main = defaultMain tests
 
 tests :: TestTree
-tests = testGroup "Tests" [lib1Tests]
+tests = testGroup "Tests" [lib1Tests, lib2Tests]
 
 lib1Tests :: TestTree
 lib1Tests = testGroup "Lib1 tests"
