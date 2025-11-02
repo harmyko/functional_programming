@@ -181,13 +181,6 @@ parseNumber input =
     ([], _) -> Left "Expected number"
     (digits, rest) -> Right (read digits, rest)
 
--- BNF: <digit> ::= "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
-parseDigit :: Parser Char
-parseDigit [] = Left "Expected digit"
-parseDigit (c:rest)
-  | isDigitChar c = Right (c, rest)
-  | otherwise = Left "Expected digit"
-
 isDigitChar :: Char -> Bool
 isDigitChar c = c >= '0' && c <= '9'
 
@@ -232,18 +225,13 @@ and2 p1 p2 input = case p1 input of
     Right (r2, rest2) -> Right ((r1, r2), rest2)
 
 and3 :: Parser a -> Parser b -> Parser c -> Parser ((a, b), c)
-and3 p1 p2 p3 = and2 (and2 p1 p2) p3
+and3 p1 p2 = and2 (and2 p1 p2)
 
 and4 :: Parser a -> Parser b -> Parser c -> Parser d -> Parser (((a, b), c), d)
-and4 p1 p2 p3 p4 = and2 (and3 p1 p2 p3) p4
+and4 p1 p2 p3 = and2 (and3 p1 p2 p3)
 
 and5 :: Parser a -> Parser b -> Parser c -> Parser d -> Parser e -> Parser ((((a, b), c), d), e)
-and5 p1 p2 p3 p4 p5 = and2 (and4 p1 p2 p3 p4) p5
-
-withResult :: Parser a -> b -> Parser b
-withResult p result input = case p input of
-  Left err -> Left err
-  Right (_, rest) -> Right (result, rest)
+and5 p1 p2 p3 p4 = and2 (and4 p1 p2 p3 p4)
 
 -- Process function
 process :: Lib1.Command -> [String]
