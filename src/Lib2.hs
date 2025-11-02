@@ -19,16 +19,18 @@ parseCommand = parseSequence
 parseSequence :: Parser Lib1.Command
 parseSequence input = case parseSimpleCommand input of
   Left err -> Left err
-  Right (cmd, rest) -> 
+  Right (cmd, rest) -> parseSequenceHelper cmd rest
+
+parseSequenceHelper :: Lib1.Command -> String -> Either ErrorMsg (Lib1.Command, String)
+parseSequenceHelper cmd input = case parseWhitespace input of
+  Right (_, ';':rest) -> 
     case parseWhitespace rest of
-      Right (_, ';':rest2) -> 
-        case parseWhitespace rest2 of
-          Right (_, rest3) -> case parseSequence rest3 of
-            Left err -> Left err
-            Right (cmd2, rest4) -> Right (Lib1.Sequence cmd cmd2, rest4)
-          Left err -> Left err
-      Right (_, rest2) -> Right (cmd, rest2)
+      Right (_, rest2) -> case parseSimpleCommand rest2 of
+        Left err -> Left err
+        Right (cmd2, rest3) -> parseSequenceHelper (Lib1.Sequence cmd cmd2) rest3
       Left err -> Left err
+  Right (_, rest) -> Right (cmd, rest)
+  Left err -> Left err
 
 -- BNF: <simple-command> ::= <add-vehicle> | <filter-by-plate> | <add-passenger> | <calculate-average-age> | <dump>
 parseSimpleCommand :: Parser Lib1.Command
