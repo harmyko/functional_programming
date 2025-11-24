@@ -4,13 +4,14 @@ module Lib3(
 
 import qualified Lib1
 
-import Control.Concurrent.STM.TVar(TVar)
+import Control.Concurrent.STM.TVar(TVar, readTVar, writeTVar, readTVarIO)
+import Control.Concurrent.STM(atomically)
 import Control.Concurrent (Chan, readChan)
 import Control.Applicative (Alternative(..))
 
-import System.IO.Strict(readFile)
+import qualified System.IO.Strict as Strict
 import System.IO(writeFile)
-import Prelude hiding (readFile, writeFile)
+import Prelude hiding (writeFile)
 
 newtype Parser a = Parser {
     runParser :: String -> Either String (a, String)
@@ -47,16 +48,14 @@ parseCommand = parseSequence
 -- BNF: <command> ::= <simple-command> | <sequence>
 -- BNF: <sequence> ::= <simple-command> ";" <command>
 parseSequence :: Parser Lib1.Command
-parseSequence = parseSimpleCommand >>= parseSequenceHelper
+parseSequence = buildSequence <$> parseSimpleCommand <*> parseRestOfSequence
   where
-    parseSequenceHelper :: Lib1.Command -> Parser Lib1.Command
-    parseSequenceHelper cmd = 
-      ((\_ _ _ cmd2 -> Lib1.Sequence cmd cmd2) <$> 
-        parseWhitespace <*> 
-        parseChar ';' <*> 
-        parseWhitespace <*> 
-        parseSimpleCommand >>= parseSequenceHelper)
-      <|> pure cmd
+    buildSequence :: Lib1.Command -> [Lib1.Command] -> Lib1.Command
+    buildSequence cmd [] = cmd
+    buildSequence cmd (c:cs) = buildSequence (Lib1.Sequence cmd c) cs
+    
+    parseRestOfSequence :: Parser [Lib1.Command]
+    parseRestOfSequence = many (parseWhitespace *> parseChar ';' *> parseWhitespace *> parseSimpleCommand)
 
 -- BNF: <simple-command> ::= <add-vehicle> | <filter-by-plate> | <add-passenger> | <calculate-average-age> | <dump>
 parseSimpleCommand :: Parser Lib1.Command
@@ -92,16 +91,16 @@ parseFilterByPlate =
 -- BNF: <add-passenger> ::= "add" <whitespace> "passenger" <whitespace> <plate> <whitespace> <sex> <whitespace> <age>
 parseAddPassenger :: Parser Lib1.Command
 parseAddPassenger = 
-    (\_ _ _ plate _ sex _ age -> Lib1.AddPassenger plate sex age) <$>
-    parseString "add" <*>
-    parseWhitespace1 <*>
-    parseString "passenger" <*>
-    parseWhitespace1 *>
-    parsePlate <*>
-    parseWhitespace1 <*>
-    parseSex <*>
-    parseWhitespace1 <*>
-    parseNumber
+    Lib1.AddPassenger <$>
+    (parseString "add" *>
+     parseWhitespace1 *>
+     parseString "passenger" *>
+     parseWhitespace1 *>
+     parsePlate) <*>
+    (parseWhitespace1 *>
+     parseSex) <*>
+    (parseWhitespace1 *>
+     parseNumber)
 
 -- BNF: <calculate-average-age> ::= "calculate" <whitespace> "average" <whitespace> "age" <whitespace> <vehicle>
 parseCalculateAverageAge :: Parser Lib1.Command
@@ -220,47 +219,120 @@ isLetterChar c = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')
 isWhitespaceChar :: Char -> Bool
 isWhitespaceChar c = c == ' ' || c == '\t' || c == '\n'
 
--- Note: We need a bind operation for parseSequenceHelper, but we can implement
--- it as a standalone function without making Parser a Monad instance
-(>>=) :: Parser a -> (a -> Parser b) -> Parser b
-(Parser p) >>= f = Parser $ \input -> case p input of
-    Left err -> Left err
-    Right (result, rest) -> runParser (f result) rest
+-- | State holds the collection of vehicles in our system
+data State = State
+  { vehicles :: [Lib1.Vehicle]
+  } deriving (Show)
 
--- | You can change the type to whatever needed. If your domain
--- does not have any state you have to make it up.
-newtype State = State ()
-
--- Fix this accordingly
+-- | Initial empty state
 emptyState :: State
-emptyState = State()
+emptyState = State { vehicles = [] }
 
 -- | Business/domain logic happens here.
--- This function makes your program actually usefull.
--- You may print if you want to print, you
--- may mutate state if needed but there must be
--- SINGLE atomically call in the function
--- You do not want to write/read files here.
+-- This function makes your program actually useful.
 execute :: TVar State -> Lib1.Command -> IO ()
-execute _ _ = error "Implement me 1"
+execute stateVar cmd = case cmd of
+  Lib1.AddVehicle vehicle -> atomically $ do
+    state <- readTVar stateVar
+    let newState = addVehicle state vehicle
+    writeTVar stateVar newState
+  
+  Lib1.FilterByPlate plate -> do
+    state <- readTVarIO stateVar
+    let result = filterByPlate state plate
+    case result of
+      Just v -> putStrLn $ "Found vehicle: " ++ showVehicle v
+      Nothing -> putStrLn $ "No vehicle found with plate: " ++ plate
+  
+  Lib1.AddPassenger plate sex age -> atomically $ do
+    state <- readTVar stateVar
+    case addPassenger state plate sex age of
+      Left err -> error err
+      Right newState -> writeTVar stateVar newState
+  
+  Lib1.CalculateAverageAge vehicle -> do
+    let avg = calculateAverageAge vehicle
+    putStrLn $ "Average age: " ++ show avg
+  
+  Lib1.Sequence cmd1 cmd2 -> do
+    execute stateVar cmd1
+    execute stateVar cmd2
+  
+  Lib1.Dump Lib1.Examples -> do
+    putStrLn "Examples:"
+    mapM_ (putStrLn . ("  " ++) . toCliCommand) Lib1.examples
+
+-- Pure domain logic functions
+
+addVehicle :: State -> Lib1.Vehicle -> State
+addVehicle state vehicle = 
+  let filteredVehicles = filter (\v -> Lib1.vehiclePlate v /= Lib1.vehiclePlate vehicle) (vehicles state)
+  in state { vehicles = vehicle : filteredVehicles }
+
+filterByPlate :: State -> String -> Maybe Lib1.Vehicle
+filterByPlate state plate = 
+  case filter (\v -> Lib1.vehiclePlate v == plate) (vehicles state) of
+    (v:_) -> Just v
+    [] -> Nothing
+
+addPassenger :: State -> String -> Char -> Int -> Either String State
+addPassenger state plate sex age = 
+  case filterByPlate state plate of
+    Nothing -> Left $ "Vehicle with plate " ++ plate ++ " not found"
+    Just vehicle -> 
+      let newPassenger = Lib1.Passenger sex age
+          updatedVehicle = vehicle { Lib1.passengers = Lib1.passengers vehicle ++ [newPassenger] }
+          updatedVehicles = map (\v -> if Lib1.vehiclePlate v == plate then updatedVehicle else v) (vehicles state)
+      in Right $ state { vehicles = updatedVehicles }
+
+calculateAverageAge :: Lib1.Vehicle -> Double
+calculateAverageAge vehicle =
+  let driverAge = fromIntegral $ Lib1.driverAge $ Lib1.driver vehicle
+      passengerAges = map (fromIntegral . Lib1.passengerAge) (Lib1.passengers vehicle)
+      allAges = driverAge : passengerAges
+      total = sum allAges
+      count = length allAges
+  in if count > 0 then total / fromIntegral count else 0.0
+
+-- Helper function to convert command to CLI string (from Lib2)
+toCliCommand :: Lib1.Command -> String
+toCliCommand (Lib1.AddVehicle vehicle) = "add vehicle " ++ showVehicle vehicle
+toCliCommand (Lib1.FilterByPlate plate) = "filter by plate " ++ plate
+toCliCommand (Lib1.AddPassenger plate sex age) = "add passenger " ++ plate ++ " " ++ [sex] ++ " " ++ show age
+toCliCommand (Lib1.CalculateAverageAge vehicle) = "calculate average age " ++ showVehicle vehicle
+toCliCommand (Lib1.Sequence cmd1 cmd2) = toCliCommand cmd1 ++ "; " ++ toCliCommand cmd2
+toCliCommand (Lib1.Dump Lib1.Examples) = "dump examples"
+
+showVehicle :: Lib1.Vehicle -> String
+showVehicle (Lib1.Vehicle plate driver passengers) = 
+  plate ++ " " ++ showDriver driver ++ " " ++ showPassengers passengers
+
+showDriver :: Lib1.Driver -> String
+showDriver (Lib1.Driver sex age) = [sex] ++ " " ++ show age
+
+showPassengers :: [Lib1.Passenger] -> String
+showPassengers [] = "[]"
+showPassengers passengers = "[" ++ showPassengerList passengers ++ "]"
+
+showPassengerList :: [Lib1.Passenger] -> String
+showPassengerList [] = ""
+showPassengerList [p] = showPassenger p
+showPassengerList (p:ps) = showPassenger p ++ ", " ++ showPassengerList ps
+
+showPassenger :: Lib1.Passenger -> String
+showPassenger (Lib1.Passenger sex age) = [sex] ++ " " ++ show age
 
 data StorageOp = Save String (Chan ()) | Load (Chan String)
--- | This function is started from main
--- in a dedicated thread. It must be used to control
--- file access in a synchronized manner: read requests
--- from chan, do the IO operations needed and respond
--- to a channel provided in a request. It must run forever.
--- Modify as needed.
--- You might want to use readFile from `strict` library
--- if you get "resource locked" exceptions under Windows.
+
+-- | This function is started from main in a dedicated thread. 
+-- It must be used to control file access in a synchronized manner.
 storageOpLoop :: Chan StorageOp -> IO ()
 storageOpLoop c = do
   _ <- readChan c
   return $ error "Implement me 2"
 
--- | This function will be called periodically
--- and on programs' exit. File writes must be performed
--- through `Chan StorageOp`.
+-- | This function will be called periodically and on programs' exit. 
+-- File writes must be performed through `Chan StorageOp`.
 save :: Chan StorageOp -> TVar State -> IO (Either String ())
 save _ _ = return $ Left "Implement me 3"
 
