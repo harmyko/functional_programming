@@ -8,10 +8,11 @@ import Control.Concurrent.STM.TVar(TVar, readTVar, writeTVar, readTVarIO)
 import Control.Concurrent.STM(atomically)
 import Control.Concurrent (Chan, readChan)
 import Control.Applicative (Alternative(..))
+import Data.Functor (($>))
 
-import qualified System.IO.Strict as Strict
-import System.IO(writeFile)
-import Prelude hiding (writeFile)
+-- Storage imports will be used when implementing save/load functions
+-- import qualified System.IO.Strict as Strict
+-- import System.IO(writeFile)
 
 newtype Parser a = Parser {
     runParser :: String -> Either String (a, String)
@@ -69,23 +70,23 @@ parseSimpleCommand =
 -- BNF: <add-vehicle> ::= "add" <whitespace> "vehicle" <whitespace> <plate> <whitespace> <driver> <whitespace> <passengers>
 parseAddVehicle :: Parser Lib1.Command
 parseAddVehicle = 
-    Lib1.AddVehicle <$> 
-    (parseString "add" *> 
-     parseWhitespace1 *> 
-     parseString "vehicle" *> 
-     parseWhitespace1 *> 
+    Lib1.AddVehicle <$>
+    (parseString "add" *>
+     parseWhitespace1 *>
+     parseString "vehicle" *>
+     parseWhitespace1 *>
      parseVehicle)
 
 -- BNF: <filter-by-plate> ::= "filter" <whitespace> "by" <whitespace> "plate" <whitespace> <plate>
 parseFilterByPlate :: Parser Lib1.Command
 parseFilterByPlate = 
-    Lib1.FilterByPlate <$> 
-    (parseString "filter" *> 
-     parseWhitespace1 *> 
-     parseString "by" *> 
-     parseWhitespace1 *> 
-     parseString "plate" *> 
-     parseWhitespace1 *> 
+    Lib1.FilterByPlate <$>
+    (parseString "filter" *>
+     parseWhitespace1 *>
+     parseString "by" *>
+     parseWhitespace1 *>
+     parseString "plate" *>
+     parseWhitespace1 *>
      parsePlate)
 
 -- BNF: <add-passenger> ::= "add" <whitespace> "passenger" <whitespace> <plate> <whitespace> <sex> <whitespace> <age>
@@ -97,10 +98,8 @@ parseAddPassenger =
      parseString "passenger" *>
      parseWhitespace1 *>
      parsePlate) <*>
-    (parseWhitespace1 *>
-     parseSex) <*>
-    (parseWhitespace1 *>
-     parseNumber)
+    (parseWhitespace1 *> parseSex) <*>
+    (parseWhitespace1 *> parseNumber)
 
 -- BNF: <calculate-average-age> ::= "calculate" <whitespace> "average" <whitespace> "age" <whitespace> <vehicle>
 parseCalculateAverageAge :: Parser Lib1.Command
@@ -140,13 +139,13 @@ parseDriver =
 -- BNF: <passengers> ::= "[" <whitespace> <passenger-list> <whitespace> "]" | "[" <whitespace> "]"
 parsePassengers :: Parser [Lib1.Passenger]
 parsePassengers = 
-    (parseChar '[' *> parseWhitespace *> parseChar ']' *> pure [])
-    <|> (parseChar '[' *> parseWhitespace *> parsePassengerList <* parseWhitespace <* parseChar ']')
+    ((parseChar '[' *> parseWhitespace *> parseChar ']') $> []) <|>
+    (parseChar '[' *> parseWhitespace *> parsePassengerList <* parseWhitespace <* parseChar ']')
 
 -- BNF: <passenger-list> ::= <passenger> | <passenger> <whitespace> "," <whitespace> <passenger-list>
 parsePassengerList :: Parser [Lib1.Passenger]
 parsePassengerList = 
-    (:) <$> parsePassenger <*> 
+    (:) <$> parsePassenger <*>
     ((parseWhitespace *> parseChar ',' *> parseWhitespace *> parsePassengerList) <|> pure [])
 
 -- BNF: <passenger> ::= <sex> <whitespace> <age>
@@ -220,7 +219,7 @@ isWhitespaceChar :: Char -> Bool
 isWhitespaceChar c = c == ' ' || c == '\t' || c == '\n'
 
 -- | State holds the collection of vehicles in our system
-data State = State
+newtype State = State
   { vehicles :: [Lib1.Vehicle]
   } deriving (Show)
 
