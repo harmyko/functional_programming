@@ -33,7 +33,7 @@
 <passenger> ::= "Passenger" <sex> <age>
 
 <plate> ::= <string>
-<sex> ::= "M" | "F"
+<sex> ::= 'M' | 'F'
 <age> ::= <integer>
 
 <dumpable> ::= "Examples"
