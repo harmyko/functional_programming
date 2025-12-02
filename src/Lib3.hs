@@ -6,13 +6,13 @@ import qualified Lib1
 
 import Control.Concurrent.STM.TVar(TVar, readTVar, writeTVar, readTVarIO)
 import Control.Concurrent.STM(atomically)
-import Control.Concurrent (Chan, readChan)
+import Control.Concurrent (Chan, readChan, writeChan, newChan)
 import Control.Applicative (Alternative(..))
 import Data.Functor (($>))
-
--- Storage imports will be used when implementing save/load functions
--- import qualified System.IO.Strict as Strict
--- import System.IO(writeFile)
+import qualified System.IO.Strict as Strict
+import System.IO(writeFile)
+import Control.Exception(catch)
+import System.IO.Error(IOError)
 
 newtype Parser a = Parser {
     runParser :: String -> Either String (a, String)
@@ -21,7 +21,7 @@ newtype Parser a = Parser {
 -- Functor instance
 instance Functor Parser where
     fmap f (Parser p) = Parser $ \input -> case p input of
-        Left err -> Left err
+        Left err -> Left errd
         Right (result, rest) -> Right (f result, rest)
 
 -- Applicative instance
@@ -227,8 +227,6 @@ newtype State = State
 emptyState :: State
 emptyState = State { vehicles = [] }
 
--- | Business/domain logic happens here.
--- This function makes your program actually useful.
 execute :: TVar State -> Lib1.Command -> IO ()
 execute stateVar cmd = case cmd of
   Lib1.AddVehicle vehicle -> atomically $ do
@@ -293,7 +291,7 @@ calculateAverageAge vehicle =
       count = length allAges
   in if count > 0 then total / fromIntegral count else 0.0
 
--- Helper function to convert command to CLI string (from Lib2)
+-- Helper function to convert command to CLI string
 toCliCommand :: Lib1.Command -> String
 toCliCommand (Lib1.AddVehicle vehicle) = "add vehicle " ++ showVehicle vehicle
 toCliCommand (Lib1.FilterByPlate plate) = "filter by plate " ++ plate
@@ -321,21 +319,80 @@ showPassengerList (p:ps) = showPassenger p ++ ", " ++ showPassengerList ps
 showPassenger :: Lib1.Passenger -> String
 showPassenger (Lib1.Passenger sex age) = [sex] ++ " " ++ show age
 
+-- ============================================================================
+-- Storage Operations
+-- ============================================================================
+
 data StorageOp = Save String (Chan ()) | Load (Chan String)
 
 -- | This function is started from main in a dedicated thread. 
 -- It must be used to control file access in a synchronized manner.
 storageOpLoop :: Chan StorageOp -> IO ()
-storageOpLoop c = do
-  _ <- readChan c
-  return $ error "Implement me 2"
+storageOpLoop chan = loop
+  where
+    loop = do
+      op <- readChan chan
+      case op of
+        Save content responseChan -> do
+          writeFile "state.txt" content
+          writeChan responseChan ()
+          loop
+        Load responseChan -> do
+          content <- Strict.readFile "state.txt" `catch` handleNotFound
+          writeChan responseChan content
+          loop
+    
+    handleNotFound :: IOError -> IO String
+    handleNotFound _ = return ""
 
 -- | This function will be called periodically and on programs' exit. 
 -- File writes must be performed through `Chan StorageOp`.
 save :: Chan StorageOp -> TVar State -> IO (Either String ())
-save _ _ = return $ Left "Implement me 3"
+save chan stateVar = do
+  state <- readTVarIO stateVar
+  let commands = stateToCommands state
+  let content = unlines $ map toCliCommand commands
+  responseChan <- newChan
+  writeChan chan (Save content responseChan)
+  _ <- readChan responseChan
+  return $ Right ()
 
 -- | This function will be called on program start
 -- File reads must be performed through `Chan StorageOp`
 load :: Chan StorageOp -> TVar State -> IO (Either String ())
-load _ _ = return $ Left "Implement me 4"
+load chan stateVar = do
+  responseChan <- newChan
+  writeChan chan (Load responseChan)
+  content <- readChan responseChan
+  if null content || all null (lines content)
+  then do
+    atomically $ writeTVar stateVar emptyState
+    return $ Right ()
+  else case parseAndExecuteCommands content of
+    Left err -> return $ Left err
+    Right newState -> do
+      atomically $ writeTVar stateVar newState
+      return $ Right ()
+
+-- | Convert State to minimal list of commands (optimized)
+stateToCommands :: State -> [Lib1.Command]
+stateToCommands state = map Lib1.AddVehicle (vehicles state)
+
+-- | Parse all commands from file and rebuild state
+parseAndExecuteCommands :: String -> Either String State
+parseAndExecuteCommands content = 
+  let commandLines = filter (not . null) $ lines content
+      parsedCommands = map (runParser parseCommand) commandLines
+  in case sequence parsedCommands of
+    Left err -> Left err
+    Right commands -> Right $ foldl applyCommand emptyState (map fst commands)
+  where
+    applyCommand :: State -> Lib1.Command -> State
+    applyCommand state (Lib1.AddVehicle vehicle) = addVehicle state vehicle
+    applyCommand state (Lib1.AddPassenger plate sex age) = 
+      case addPassenger state plate sex age of
+        Right newState -> newState
+        Left _ -> state
+    applyCommand state (Lib1.Sequence cmd1 cmd2) = 
+      applyCommand (applyCommand state cmd1) cmd2
+    applyCommand state _ = state
