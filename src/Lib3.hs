@@ -21,7 +21,7 @@ newtype Parser a = Parser {
 -- Functor instance
 instance Functor Parser where
     fmap f (Parser p) = Parser $ \input -> case p input of
-        Left err -> Left errd
+        Left err -> Left err
         Right (result, rest) -> Right (f result, rest)
 
 -- Applicative instance
