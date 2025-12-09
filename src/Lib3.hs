@@ -10,9 +10,7 @@ import Control.Concurrent (Chan, readChan, writeChan, newChan)
 import Control.Applicative (Alternative(..))
 import Data.Functor (($>))
 import qualified System.IO.Strict as Strict
-import System.IO(writeFile)
 import Control.Exception(catch)
-import System.IO.Error(IOError)
 
 newtype Parser a = Parser {
     runParser :: String -> Either String (a, String)
@@ -325,8 +323,6 @@ showPassenger (Lib1.Passenger sex age) = [sex] ++ " " ++ show age
 
 data StorageOp = Save String (Chan ()) | Load (Chan String)
 
--- | This function is started from main in a dedicated thread. 
--- It must be used to control file access in a synchronized manner.
 storageOpLoop :: Chan StorageOp -> IO ()
 storageOpLoop chan = loop
   where
@@ -345,8 +341,6 @@ storageOpLoop chan = loop
     handleNotFound :: IOError -> IO String
     handleNotFound _ = return ""
 
--- | This function will be called periodically and on programs' exit. 
--- File writes must be performed through `Chan StorageOp`.
 save :: Chan StorageOp -> TVar State -> IO (Either String ())
 save chan stateVar = do
   state <- readTVarIO stateVar
@@ -357,8 +351,6 @@ save chan stateVar = do
   _ <- readChan responseChan
   return $ Right ()
 
--- | This function will be called on program start
--- File reads must be performed through `Chan StorageOp`
 load :: Chan StorageOp -> TVar State -> IO (Either String ())
 load chan stateVar = do
   responseChan <- newChan
@@ -374,11 +366,9 @@ load chan stateVar = do
       atomically $ writeTVar stateVar newState
       return $ Right ()
 
--- | Convert State to minimal list of commands (optimized)
 stateToCommands :: State -> [Lib1.Command]
 stateToCommands state = map Lib1.AddVehicle (vehicles state)
 
--- | Parse all commands from file and rebuild state
 parseAndExecuteCommands :: String -> Either String State
 parseAndExecuteCommands content = 
   let commandLines = filter (not . null) $ lines content

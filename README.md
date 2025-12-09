@@ -136,8 +136,6 @@ add vehicle DEF-321 F 42 [M 15, F 12, M 8]
 
 ## Persistence Demonstration
 
-The following screenshots demonstrate the state persistence workflow:
-
 **Step 1: Initial Program Launch and Command Execution**
 ```
 $ stack run fp2025-three
