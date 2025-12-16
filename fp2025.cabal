@@ -1,26 +1,8 @@
-cabal-version: 2.2
-
--- This file has been generated from package.yaml by hpack version 0.37.0.
---
--- see: https://github.com/sol/hpack
+cabal-version: 1.12
 
 name:           fp2025
 version:        0.1.0.0
-description:    Please see the README on GitHub at <https://github.com/githubuser/fp2024#readme>
-homepage:       https://github.com/vipo/fp-2025#readme
-bug-reports:    https://github.com/vipo/fp-2025/issues
-author:         Author name here
-maintainer:     example@example.com
-copyright:      2024 Author name here
-license:        BSD-3-Clause
 build-type:     Simple
-extra-source-files:
-    README.md
-    CHANGELOG.md
-
-source-repository head
-  type: git
-  location: https://github.com/vipo/fp-2025
 
 library
   exposed-modules:
@@ -28,73 +10,63 @@ library
       Lib2
       Lib3
       Lib4
+  other-modules:
+      Paths_fp2025
   hs-source-dirs:
       src
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
-      QuickCheck
-    , async
-    , base >=4.7 && <5
-    , deepseq
-    , random
+      base >=4.7 && <5
     , stm
     , strict
     , transformers
+    , mtl
+    , free
+    , http-conduit
+    , bytestring
+    , scotty
+    , wai
+    , wai-extra
+    , text
+    , QuickCheck
   default-language: Haskell2010
 
-executable fp2025-one
-  main-is: Main.hs
+executable fp2025-server
+  main-is: ServerMain.hs
   other-modules:
       Paths_fp2025
-  autogen-modules:
-      Paths_fp2025
   hs-source-dirs:
-      app1
-  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -rtsopts
+      app
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
     , fp2025
-    , repline
-  default-language: Haskell2010
-
-executable fp2025-three
-  main-is: Main.hs
-  other-modules:
-      Paths_fp2025
-  autogen-modules:
-      Paths_fp2025
-  hs-source-dirs:
-      app3
-  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -rtsopts
-  build-depends:
-      async
-    , base >=4.7 && <5
-    , fp2025
-    , repline
     , stm
+    , scotty
+    , wai-extra
+    , text
+    , transformers
+    , bytestring
+    , http-types
   default-language: Haskell2010
 
-executable fp2025-two
-  main-is: Main.hs
+executable fp2025-client
+  main-is: ClientMain.hs
   other-modules:
       Paths_fp2025
-  autogen-modules:
-      Paths_fp2025
   hs-source-dirs:
-      app2
-  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -rtsopts
+      app
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
     , fp2025
-    , repline
+    , free
   default-language: Haskell2010
 
-test-suite fp2024-test
+test-suite fp2025-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
-      Paths_fp2025
-  autogen-modules:
       Paths_fp2025
   hs-source-dirs:
       test
@@ -104,4 +76,6 @@ test-suite fp2024-test
     , fp2025
     , tasty
     , tasty-hunit
+    , tasty-quickcheck
+    , transformers
   default-language: Haskell2010

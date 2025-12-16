@@ -38,6 +38,8 @@ lib3Tests = testGroup "Lib3 tests" (
 lib4Tests :: TestTree
 lib4Tests = testGroup "Lib4 tests" [
   QC.testProperty "Command is parsed" $
-    \command -> runState (runExceptT Lib4.parseCommand) (Lib2.toCliCommand command)
-      == (Right command, "")
+    \command -> 
+      let cmdStr = Lib2.toCliCommand command
+          result = runState (runExceptT Lib4.parseCommand) cmdStr
+      in result == (Right command, "")
   ]

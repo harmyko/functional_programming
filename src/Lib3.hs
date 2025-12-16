@@ -1,6 +1,23 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 module Lib3(
-    emptyState, State(..), execute, load, save, storageOpLoop, StorageOp, Parser(..), parseCommand) where
+    emptyState, 
+    State(..), 
+    execute, 
+    load, 
+    save, 
+    storageOpLoop, 
+    StorageOp, 
+    Parser(..), 
+    parseCommand,
+    -- Export these for Lib4 to use
+    addVehicle,
+    filterByPlate,
+    addPassenger,
+    calculateAverageAge,
+    showVehicle,
+    showDriver,
+    showPassengers
+    ) where
 
 import qualified Lib1
 
